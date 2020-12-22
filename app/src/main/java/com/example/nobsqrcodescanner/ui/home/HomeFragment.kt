@@ -97,24 +97,8 @@ class HomeFragment : Fragment()
     {
         if (cameraView != null)
         {
-            fotoapparat = activity?.let {
-                Fotoapparat(
-                    context = it.applicationContext,
-                    view = cameraView!!,
-                    scaleType = ScaleType.CenterCrop,
-                    lensPosition = back(),
-                    logger = loggers(
-                        logcat()
-                    ),
-                    cameraErrorCallback = { error ->
-                        println("Recorder errors: $error")
-                    }
-                )
-            }
-            fotoapparat?.updateConfiguration(CameraConfiguration(
-                frameProcessor = fun(frame)
-                {
-                    Log.d("DEBUG", "test")
+            val cameraConfiguration = CameraConfiguration(
+                frameProcessor = { frame ->
                     val inputImage = InputImage.fromByteArray(
                         frame.image,
                         frame.size.width,
@@ -128,7 +112,6 @@ class HomeFragment : Fragment()
                         {
                             val barcodeValue = barcodeObject.rawValue
                             context?.toast("The code %s".format(barcodeValue))
-                            Log.d("Barcode", "The code %s".format(barcodeValue))
                         }
                         task.addOnFailureListener {
                             Log.d("ERROR", "An Exception occurred", it)
@@ -136,7 +119,21 @@ class HomeFragment : Fragment()
                     }
                 }
             )
-            )
+            fotoapparat = activity?.let {
+                Fotoapparat(
+                    context = it.applicationContext,
+                    view = cameraView!!,
+                    scaleType = ScaleType.CenterCrop,
+                    lensPosition = back(),
+                    logger = loggers(
+                        logcat()
+                    ),
+                    cameraErrorCallback = { error ->
+                        println("Recorder errors: $error")
+                    },
+                    cameraConfiguration = cameraConfiguration
+                )
+            }
         }
     }
 
