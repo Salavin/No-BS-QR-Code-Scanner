@@ -1,15 +1,18 @@
 package com.example.nobsqrcodescanner.ui.home
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -18,15 +21,23 @@ import androidx.lifecycle.ViewModelProviders
 import com.example.nobsqrcodescanner.MainActivity
 import com.example.nobsqrcodescanner.R
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.mlkit.vision.barcode.Barcode
+import com.google.mlkit.vision.barcode.Barcode.FORMAT_QR_CODE
+import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 import io.fotoapparat.Fotoapparat
 import io.fotoapparat.configuration.CameraConfiguration
 import io.fotoapparat.log.logcat
 import io.fotoapparat.log.loggers
 import io.fotoapparat.parameter.ScaleType
+import io.fotoapparat.preview.Frame
 import io.fotoapparat.selector.back
 import io.fotoapparat.selector.front
 import io.fotoapparat.selector.off
 import io.fotoapparat.selector.torch
+import io.fotoapparat.util.FrameProcessor
 import io.fotoapparat.view.CameraRenderer
 import io.fotoapparat.view.CameraView
 import kotlinx.android.synthetic.main.fragment_home.*
@@ -41,6 +52,7 @@ class HomeFragment : Fragment()
     var flashState: FlashState? = null
     var cameraView: CameraRenderer? = null
     val permissions = arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+    private lateinit var barcodeScanner: BarcodeScanner
 
     private lateinit var homeViewModel: HomeViewModel
 
@@ -69,6 +81,18 @@ class HomeFragment : Fragment()
         return root
     }
 
+    override fun onCreate(savedInstanceState: Bundle?)
+    {
+        super.onCreate(savedInstanceState)
+
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                FORMAT_QR_CODE
+            ).build()
+
+        barcodeScanner = BarcodeScanning.getClient(options)
+    }
+
     private fun createFotoapparat()
     {
         if (cameraView != null)
@@ -87,6 +111,32 @@ class HomeFragment : Fragment()
                     }
                 )
             }
+            fotoapparat?.updateConfiguration(CameraConfiguration(
+                frameProcessor = fun(frame)
+                {
+                    Log.d("DEBUG", "test")
+                    val inputImage = InputImage.fromByteArray(
+                        frame.image,
+                        frame.size.width,
+                        frame.size.height,
+                        frame.rotation,
+                        InputImage.IMAGE_FORMAT_NV21
+                    )
+                    val task = barcodeScanner.process(inputImage)
+                    task.addOnSuccessListener { barCodesList ->
+                        for (barcodeObject in barCodesList)
+                        {
+                            val barcodeValue = barcodeObject.rawValue
+                            context?.toast("The code %s".format(barcodeValue))
+                            Log.d("Barcode", "The code %s".format(barcodeValue))
+                        }
+                        task.addOnFailureListener {
+                            Log.d("ERROR", "An Exception occurred", it)
+                        }
+                    }
+                }
+            )
+            )
         }
     }
 
@@ -161,6 +211,9 @@ class HomeFragment : Fragment()
             activity?.finish()
         }
     }
+
+    fun Context.toast(message: CharSequence) =
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
 
 enum class CameraState
