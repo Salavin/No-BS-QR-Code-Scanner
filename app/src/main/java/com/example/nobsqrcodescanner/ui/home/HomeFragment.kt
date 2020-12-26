@@ -1,27 +1,30 @@
 package com.example.nobsqrcodescanner.ui.home
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.example.nobsqrcodescanner.MainActivity
 import com.example.nobsqrcodescanner.R
+import com.example.nobsqrcodescanner.qr.ProcessQRCode
+import com.example.nobsqrcodescanner.qr.QRCodeType
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.mlkit.vision.barcode.Barcode
+import com.google.android.material.snackbar.Snackbar
 import com.google.mlkit.vision.barcode.Barcode.FORMAT_QR_CODE
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
@@ -32,16 +35,13 @@ import io.fotoapparat.configuration.CameraConfiguration
 import io.fotoapparat.log.logcat
 import io.fotoapparat.log.loggers
 import io.fotoapparat.parameter.ScaleType
-import io.fotoapparat.preview.Frame
 import io.fotoapparat.selector.back
 import io.fotoapparat.selector.front
 import io.fotoapparat.selector.off
 import io.fotoapparat.selector.torch
-import io.fotoapparat.util.FrameProcessor
 import io.fotoapparat.view.CameraRenderer
 import io.fotoapparat.view.CameraView
 import kotlinx.android.synthetic.main.fragment_home.*
-import java.io.File
 
 class HomeFragment : Fragment()
 {
@@ -52,6 +52,7 @@ class HomeFragment : Fragment()
     var flashState: FlashState? = null
     var cameraView: CameraRenderer? = null
     val permissions = arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+    var alertDialog: AlertDialog? = null
     private lateinit var barcodeScanner: BarcodeScanner
 
     private lateinit var homeViewModel: HomeViewModel
@@ -108,13 +109,62 @@ class HomeFragment : Fragment()
                     )
                     val task = barcodeScanner.process(inputImage)
                     task.addOnSuccessListener { barCodesList ->
-                        for (barcodeObject in barCodesList)
+                        if (this.alertDialog == null || !this.alertDialog?.isShowing!!)
                         {
-                            val barcodeValue = barcodeObject.rawValue
-                            context?.toast("The code %s".format(barcodeValue))
-                        }
-                        task.addOnFailureListener {
-                            Log.d("ERROR", "An Exception occurred", it)
+                            for (barcodeObject in barCodesList)
+                            {
+                                val barcodeValue = barcodeObject.rawValue
+//                            context?.toast("The code %s".format(barcodeValue))
+                                if (barcodeValue != null)
+                                {
+                                    val processQRCode = ProcessQRCode(barcodeValue)
+                                    var title: String
+                                    var message: String
+
+                                    title = when (processQRCode.type)
+                                    {
+                                        QRCodeType.TEXT -> "Decoded text:"
+                                        QRCodeType.URL -> "Open URL?"
+                                        QRCodeType.EMAIL -> "Open email application?"
+                                        QRCodeType.TEL -> "Open phone app?"
+                                        QRCodeType.CONTACT -> "Add contact?"
+                                        QRCodeType.SMS -> "Send text message?"
+                                        QRCodeType.GEO -> "Open maps application?"
+                                        QRCodeType.WIFI -> "Connect to WiFi network?"
+                                        QRCodeType.MARKET -> "Open app store?"
+                                        else -> "Error"
+                                    }
+                                    if (processQRCode.type == QRCodeType.TEXT)
+                                    {
+                                        message = processQRCode.string
+                                    } else
+                                    {
+                                        message = ""
+                                        for (key in processQRCode.data.keys)
+                                        {
+                                            message += key + ": " + processQRCode.data[key] + '\n'
+                                        }
+                                    }
+                                    this.alertDialog = activity?.let {
+                                        val builder = AlertDialog.Builder(it)
+                                        builder.apply {
+                                            setTitle(title)
+                                            setMessage(message)
+                                        }
+                                        if (processQRCode.type == QRCodeType.TEXT)
+                                        {
+                                            builder.setNeutralButton("Dismiss") { _, _ -> }
+                                        } else
+                                        {
+                                            builder.setNegativeButton("No") { _, _ -> }
+                                            builder.setPositiveButton("Yes") { _, _ ->
+                                                startActivity(processQRCode.intent)
+                                            }
+                                        }
+                                        builder.show()
+                                    }
+                                }
+                            }
                         }
                     }
                 }
