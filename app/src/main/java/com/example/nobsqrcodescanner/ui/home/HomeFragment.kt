@@ -158,7 +158,13 @@ class HomeFragment : Fragment()
                                         {
                                             builder.setNegativeButton("No") { _, _ -> }
                                             builder.setPositiveButton("Yes") { _, _ ->
-                                                startActivity(processQRCode.intent)
+                                                if (processQRCode.type == QRCodeType.WIFI)
+                                                {
+                                                    startActivityForResult(processQRCode.intent, 0)
+                                                } else
+                                                {
+                                                    startActivity(processQRCode.intent)
+                                                }
                                             }
                                         }
                                         builder.show()
