@@ -2,11 +2,16 @@ package com.example.nobsqrcodescanner.qr
 
 import android.content.Intent
 import android.net.Uri
-import android.net.wifi.WifiNetworkSpecifier
+import android.net.wifi.WifiEnterpriseConfig
+import android.os.Bundle
+import android.os.Parcelable
+import kotlin.collections.ArrayList
+import android.net.wifi.WifiNetworkSuggestion
 import android.provider.ContactsContract
+import android.provider.Settings
 import java.util.*
 
-class ProcessQRCode(val string: String)
+class ProcessQRCode(var string: String)
 {
     var type: QRCodeType
     var data: MutableMap<String, String> = mutableMapOf()
@@ -299,7 +304,108 @@ class ProcessQRCode(val string: String)
             decodeTEXT()
             return
         }
-        WifiNetworkSpecifier.Builder()
+        this.intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS)
+        val wifiNetworkSuggestion: WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
+        for (key in this.data.keys)
+        {
+            when (key)
+            {
+                "SSID" -> this.data[key]?.let { wifiNetworkSuggestion.setSsid(it) }
+                "Password" ->
+                {
+                    when (this.data["Authentication type"]?.toLowerCase(Locale.ROOT))
+                    {
+                        "wep" ->
+                        {
+                            this.type = QRCodeType.TEXT
+                            this.string += " [Note: WEP networks are not supported]"
+                            decodeTEXT()
+                            return  // Aborting WIFI decoding
+                        }
+                        "wpa", "wpa2" -> this.data["Password"]?.let {
+                            wifiNetworkSuggestion.setWpa2Passphrase(
+                                it
+                            )
+                        }  // WPA doesn't seem to be supported, but from what I can tell it is backwards compatible with WPA2
+                        "wpa2-eap", "wpa3-eap" ->
+                        {
+                            val wifiEnterpriseConfig = WifiEnterpriseConfig()
+                            when (this.data["EAP method"]!!.toLowerCase(Locale.ROOT))
+                            {
+                                "aka" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.AKA
+                                "aka_prime" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.AKA_PRIME
+                                "none" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.NONE
+                                "peap" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.PEAP
+                                "pwd" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.PWD
+                                "sim" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.SIM
+                                "tls" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.TLS
+                                "ttls" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.TTLS
+                                "unauth_tls" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.UNAUTH_TLS
+                                "wapi_cert" -> wifiEnterpriseConfig.eapMethod =
+                                    WifiEnterpriseConfig.Eap.WAPI_CERT
+                            }
+                            when (this.data["Phase 2 method"]!!.toLowerCase(Locale.ROOT))
+                            {
+                                "aka" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.AKA
+                                "aka_prime" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.AKA_PRIME
+                                "gtc" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.GTC
+                                "mschap" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.MSCHAP
+                                "mschapv2" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.MSCHAPV2
+                                "none" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.NONE
+                                "pap" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.PAP
+                                "sim" -> wifiEnterpriseConfig.phase2Method =
+                                    WifiEnterpriseConfig.Phase2.SIM
+                            }
+                            wifiEnterpriseConfig.identity = this.data["Identity"]!!
+                            wifiEnterpriseConfig.anonymousIdentity =
+                                this.data["Anonymous identity"]!!
+                            wifiEnterpriseConfig.password = this.data["Password"]!!
+                            if (this.data["Authentication type"]?.toLowerCase(Locale.ROOT) == "wpa2-eap")
+                            {
+                                wifiNetworkSuggestion.setWpa2EnterpriseConfig(wifiEnterpriseConfig)
+                            } else
+                            {
+                                wifiNetworkSuggestion.setWpa3EnterpriseConfig(wifiEnterpriseConfig)
+                            }
+                        }
+                        "wpa3" -> this.data["Password"]?.let {
+                            wifiNetworkSuggestion.setWpa3Passphrase(
+                                it
+                            )
+                        }
+                    }
+                }
+                "Hidden" -> wifiNetworkSuggestion.setIsHiddenSsid(
+                    this.data["Hidden"]?.toLowerCase(
+                        Locale.ROOT
+                    ).toBoolean()
+                )
+            }
+        }
+        val suggestionsList: MutableList<WifiNetworkSuggestion> = ArrayList()
+        suggestionsList.add(wifiNetworkSuggestion.build())
+        val bundle: Bundle = Bundle()
+        bundle.putParcelableArrayList(
+            Settings.EXTRA_WIFI_NETWORK_LIST,
+            suggestionsList as java.util.ArrayList<out Parcelable>
+        )
+        this.intent!!.putExtras(bundle)
     }
 
     private fun decodeTEXT()
