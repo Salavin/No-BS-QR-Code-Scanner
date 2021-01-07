@@ -243,58 +243,29 @@ class ProcessQRCode(var string: String)
 
     private fun decodeWIFI()
     {
-        var inParameter = false
-
-        for (i in 5 until this.string.length)
+        val regex = Regex(pattern = "(?:(?::)|;)(?:[tspheai]|(?:ph2)):(.*?)(?=;)")
+        if (regex.containsMatchIn(this.string))
         {
-            if (inParameter)
+            for (matchResult: MatchResult in regex.findAll(this.string))
             {
-                if (this.string[i] == ';' && this.string[i - 1] != '\\')  // Checking to see if there is a non-escaped semicolon, ending the parameter
+                when (matchResult.groupValues[0][1].toLowerCase())  // Grabbing first group, second character
                 {
-                    inParameter = false
-                } else
-                {
-                    if (this.string[i] == '\\' && this.string.length > i + 1 && "\\;,:".contains(
-                            this.string[i]
-                        )
-                    )  // Checking for escaped characters
+                    't' -> this.data["Authentication type"] = matchResult.groupValues[1]
+                    's' -> this.data["SSID"] = matchResult.groupValues[1]
+                    'p' ->
                     {
-                        continue  //Skip over the '\'
-                    } else
-                    {
-                        this.data[this.data.keys.last()] =
-                            this.data[this.data.keys.last()] + this.string[i]
-                    }
-                }
-            }
-            else
-            {
-                if ("tspheai".contains(this.string[i].toLowerCase()))
-                {
-                    if (this.string[i].toLowerCase() == 'p' && this.string.length > i + 2 && this.string[i + 1].toLowerCase() == 'h' && this.string[i + 2] == '2')
-                    {
-                        this.data["Phase 2 method"] = ""
-                    }
-                    else
-                    {
-                        when (this.string[i].toLowerCase())
+                        if (matchResult.groupValues[0].toLowerCase(Locale.ROOT).contains("ph2"))
                         {
-                            't' -> this.data["Authentication type"] = ""
-                            's' -> this.data["SSID"] = ""
-                            'p' -> this.data["Password"] = ""
-                            'h' -> this.data["Hidden"] = ""
-                            'e' -> this.data["EAP method"] = ""
-                            'a' -> this.data["Anonymous identity"] = ""
-                            'i' -> this.data["Identity"] = ""
+                            this.data["Phase 2 method"] = matchResult.groupValues[1]
+                        } else
+                        {
+                            this.data["Password"] = matchResult.groupValues[1]
                         }
                     }
-                    inParameter = true
-                }
-                else  // Invalid formatting, abort
-                {
-                    this.type = QRCodeType.TEXT
-                    decodeTEXT()
-                    return
+                    'h' -> this.data["Hidden"] = matchResult.groupValues[1]
+                    'e' -> this.data["EAP method"] = matchResult.groupValues[1]
+                    'a' -> this.data["Anonymous identity"] = matchResult.groupValues[1]
+                    'i' -> this.data["Identity"] = matchResult.groupValues[1]
                 }
             }
         }
@@ -400,7 +371,7 @@ class ProcessQRCode(var string: String)
         }
         val suggestionsList: MutableList<WifiNetworkSuggestion> = ArrayList()
         suggestionsList.add(wifiNetworkSuggestion.build())
-        val bundle: Bundle = Bundle()
+        val bundle = Bundle()
         bundle.putParcelableArrayList(
             Settings.EXTRA_WIFI_NETWORK_LIST,
             suggestionsList as java.util.ArrayList<out Parcelable>
