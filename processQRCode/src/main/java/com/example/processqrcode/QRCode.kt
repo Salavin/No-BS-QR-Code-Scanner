@@ -1,17 +1,17 @@
-package com.example.nobsqrcodescanner.qr
+package com.example.processqrcode
 
 import android.content.Intent
 import android.net.Uri
 import android.net.wifi.WifiEnterpriseConfig
+import android.net.wifi.WifiNetworkSuggestion
 import android.os.Bundle
 import android.os.Parcelable
-import kotlin.collections.ArrayList
-import android.net.wifi.WifiNetworkSuggestion
 import android.provider.ContactsContract
 import android.provider.Settings
 import java.util.*
+import kotlin.collections.ArrayList
 
-class ProcessQRCode(var string: String)
+class QRCode(var string: String)
 {
     var type: QRCodeType
     var data: MutableMap<String, String> = mutableMapOf()
@@ -22,7 +22,8 @@ class ProcessQRCode(var string: String)
         val regex = Regex(pattern = "\\A(\\w+):")
         if (regex.containsMatchIn(this.string))
         {
-            when (regex.find(this.string)?.groupValues?.get(1)?.toLowerCase(Locale.ROOT)) //TODO: Implement vEvent and vCard
+            when (regex.find(this.string)?.groupValues?.get(1)
+                ?.toLowerCase(Locale.ROOT)) //TODO: Implement vEvent and vCard
             {
                 "http", "https", "url", "urlto" ->
                 {
@@ -96,19 +97,22 @@ class ProcessQRCode(var string: String)
             this.data["Email"] = uri.userInfo + '@' + uri.authority
             for (parameter in uri.queryParameterNames)
             {
-                this.data[parameter.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)] = uri.getQueryParameter(parameter)!!
+                this.data[parameter.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)] =
+                    uri.getQueryParameter(parameter)!!
             }
-        }
-        else
+        } else
         {
-            val regex = Regex(pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|\\Z)", option = RegexOption.IGNORE_CASE)
+            val regex = Regex(
+                pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|\\Z)",
+                option = RegexOption.IGNORE_CASE
+            )
             for (match in regex.findAll(this.string))
             {
                 when (match.groupValues[0].toLowerCase(Locale.ROOT))
                 {
-                    "to:" -> this.data["To"] = match.groupValues[1]
+                    "to:" -> this.data["Email"] = match.groupValues[1]
                     "sub:" -> this.data["Subject"] = match.groupValues[1]
-                    "body:" -> this.data["Body:"] = match.groupValues[1]
+                    "body:" -> this.data["Body"] = match.groupValues[1]
                 }
             }
         }
@@ -130,7 +134,9 @@ class ProcessQRCode(var string: String)
         } else
         {
             this.type = QRCodeType.TEXT
+            this.string += " [Note: Invalid phone number]"
             decodeTEXT()
+            return
         }
         if (this.type == QRCodeType.SMS)
         {
@@ -144,8 +150,7 @@ class ProcessQRCode(var string: String)
                 this.data["Message"] = result
                 this.intent!!.putExtra("sms_body", result)
             }
-        }
-        else
+        } else
         {
             this.intent = Intent(Intent.ACTION_DIAL)
             this.intent!!.data = Uri.parse(this.string)
@@ -178,14 +183,12 @@ class ProcessQRCode(var string: String)
                             this.data[this.data.keys.last()] + this.string[i]
                     }
                 }
-            }
-            else
+            } else
             {
                 if (this.string[i] != ':')
                 {
                     tmpParam += this.string[i]
-                }
-                else
+                } else
                 {
                     when (tmpParam.toLowerCase(Locale.ROOT))
                     {
@@ -202,6 +205,7 @@ class ProcessQRCode(var string: String)
                         else ->  // Invalid formatting, abort
                         {
                             this.type = QRCodeType.TEXT
+                            this.string += " [Note: Invalid formatting]"
                             decodeTEXT()
                             return
                         }
@@ -210,20 +214,45 @@ class ProcessQRCode(var string: String)
                 }
             }
         }
+        if (this.data["Name"]?.contains(',') == true)  // "When a field is divided by a comma (,), the first half is treated as the last name and the second half is treated as the first name."
+        {
+            this.data["Name"] =
+                this.data["Name"]?.substringBefore(',')!! + ' ' + this.data["Name"]?.substringAfter(
+                    ','
+                )!!
+        }
         this.intent = Intent(Intent.ACTION_INSERT)
         this.intent!!.type = ContactsContract.Contacts.CONTENT_TYPE
         for (param in this.data.keys)
         {
             when (param)  //TODO: Find out how to insert other fields
             {
-                "Name" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.NAME, this.data[param])
-                "Reading" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.PHONETIC_NAME, this.data[param])
-                "Phone" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.PHONE, this.data[param])
+                "Name" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.NAME,
+                    this.data[param]
+                )
+                "Reading" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.PHONETIC_NAME,
+                    this.data[param]
+                )
+                "Phone" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.PHONE,
+                    this.data[param]
+                )
 //                "Video" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.EXTRA_DATA_SET, this.data[param])
-                "Email" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.EMAIL, this.data[param])
-                "Memo" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.NOTES, this.data[param])
+                "Email" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.EMAIL,
+                    this.data[param]
+                )
+                "Memo" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.NOTES,
+                    this.data[param]
+                )
 //                "Birthday" -> this.intent!!.putExtra(ContactsContract.Intents.Insert., this.data[param])
-                "Address" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.POSTAL, this.data[param])
+                "Address" -> this.intent!!.putExtra(
+                    ContactsContract.Intents.Insert.POSTAL,
+                    this.data[param]
+                )
 //                "URL" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.NAME, this.data[param])
 //                "Nickname" -> this.intent!!.putExtra(ContactsContract.Intents.Insert.NAME, this.data[param])
             }
@@ -272,8 +301,9 @@ class ProcessQRCode(var string: String)
         if (!this.data.keys.contains("SSID"))  // This parameter is required
         {
             this.type = QRCodeType.TEXT
+            this.string += " [Note: Missing SSID]"
             decodeTEXT()
-            return
+            return  // Aborting WIFI decoding
         }
         this.intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS)
         val wifiNetworkSuggestion: WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
@@ -384,10 +414,3 @@ class ProcessQRCode(var string: String)
         this.data["Text"] = this.string
     }
 }
-
-enum class QRCodeType
-{
-    TEXT, URL, EMAIL, TEL, CONTACT, SMS, GEO, CAL, WIFI, MARKET
-}
-
-// https://github.com/zxing/zxing/wiki/Barcode-Contents

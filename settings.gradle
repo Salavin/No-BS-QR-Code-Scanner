@@ -1,2 +1,3 @@
+include ':processQRCode'
 include ':app'
 rootProject.name = "No BS QR Code Scanner"
