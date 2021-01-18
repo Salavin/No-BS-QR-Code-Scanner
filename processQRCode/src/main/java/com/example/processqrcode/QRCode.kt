@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.provider.ContactsContract
 import android.provider.Settings
+import java.net.URLDecoder
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -74,6 +75,7 @@ class QRCode(var string: String)
         } else
         {
             this.type = QRCodeType.TEXT
+            decodeTEXT()
         }
     }
 
@@ -81,8 +83,10 @@ class QRCode(var string: String)
     {
         when
         {
-            this.string.substring(0, 4) == "URL:" -> this.data["URL"] = this.string.substring(4)
-            this.string.substring(0, 6) == "URLTO:" -> this.data["URL"] = this.string.substring(6)
+            this.string.substring(0, 4).toLowerCase(Locale.ROOT) == "url:" -> this.data["URL"] =
+                this.string.substring(4)
+            this.string.substring(0, 6).toLowerCase(Locale.ROOT) == "urlto:" -> this.data["URL"] =
+                this.string.substring(6)
             else -> this.data["URL"] = this.string  // http, https, market
         }
         this.intent = Intent(Intent.ACTION_VIEW)
@@ -100,7 +104,8 @@ class QRCode(var string: String)
                 this.data[parameter.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)] =
                     uri.getQueryParameter(parameter)!!
             }
-        } else
+        }
+        else
         {
             val regex = Regex(
                 pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|\\Z)",
@@ -122,16 +127,12 @@ class QRCode(var string: String)
 
     private fun decodeTEL()
     {
-        var regex = Regex(pattern = "\\A.{4}\\D*(\\d+)+(?:|\\Z)")
+        var regex = Regex(pattern = "\\A.{4}([^:[a-zA-Z]]+)(?::|\\Z)")
         if (regex.containsMatchIn(this.string))
         {
-            var number = ""
-            for (matchResult: MatchResult in regex.findAll(this.string))
-            {
-                number += matchResult.groupValues[1]
-            }
-            this.data["Number"] = number
-        } else
+            this.data["Number"] = regex.find(this.string)!!.groupValues[1]
+        }
+        else
         {
             this.type = QRCodeType.TEXT
             this.string += " [Note: Invalid phone number]"
@@ -147,10 +148,11 @@ class QRCode(var string: String)
             val result: String? = regex.find(this.string)?.groupValues?.get(1)
             if (result != null)
             {
-                this.data["Message"] = result
-                this.intent!!.putExtra("sms_body", result)
+                this.data["Message"] = URLDecoder.decode(result, "UTF-8")
+                this.intent!!.putExtra("sms_body", URLDecoder.decode(result, "UTF-8"))
             }
-        } else
+        }
+        else
         {
             this.intent = Intent(Intent.ACTION_DIAL)
             this.intent!!.data = Uri.parse(this.string)
@@ -169,7 +171,8 @@ class QRCode(var string: String)
                 if (this.string[i] == ';' && this.string[i - 1] != '\\')  // Checking to see if there is a non-escaped semicolon, ending the parameter
                 {
                     inParameter = false
-                } else
+                }
+                else
                 {
                     if (this.string[i] == '\\' && this.string.length > i + 1 && "\\;,:".contains(
                             this.string[i]
@@ -177,18 +180,21 @@ class QRCode(var string: String)
                     )  // Checking for escaped characters
                     {
                         continue  //Skip over the '\'
-                    } else
+                    }
+                    else
                     {
                         this.data[this.data.keys.last()] =
                             this.data[this.data.keys.last()] + this.string[i]
                     }
                 }
-            } else
+            }
+            else
             {
                 if (this.string[i] != ':')
                 {
                     tmpParam += this.string[i]
-                } else
+                }
+                else
                 {
                     when (tmpParam.toLowerCase(Locale.ROOT))
                     {
@@ -211,13 +217,14 @@ class QRCode(var string: String)
                         }
                     }
                     inParameter = true
+                    tmpParam = ""
                 }
             }
         }
         if (this.data["Name"]?.contains(',') == true)  // "When a field is divided by a comma (,), the first half is treated as the last name and the second half is treated as the first name."
         {
             this.data["Name"] =
-                this.data["Name"]?.substringBefore(',')!! + ' ' + this.data["Name"]?.substringAfter(
+                this.data["Name"]?.substringAfter(',')!! + ' ' + this.data["Name"]?.substringBefore(
                     ','
                 )!!
         }
@@ -261,8 +268,20 @@ class QRCode(var string: String)
 
     private fun decodeGEO()
     {
-        this.intent = Intent(Intent.ACTION_VIEW)
-        this.intent!!.data = Uri.parse(this.string)
+        val regex = Regex(pattern = "geo:(.*?),(.*?)(?:,|\\Z)", option = RegexOption.IGNORE_CASE)
+        if (regex.containsMatchIn(this.string) && (regex.find(this.string)!!.groupValues.size == 3))
+        {
+            val groupValues = regex.find(this.string)!!.groupValues
+            this.data["Latitude"] = groupValues[1]
+            this.data["Longitude"] = groupValues[2]
+            this.intent = Intent(Intent.ACTION_VIEW)
+            this.intent!!.data = Uri.parse(this.string)
+        }
+        else
+        {
+            this.type = QRCodeType.TEXT
+            decodeTEXT()
+        }
     }
 
 //    private fun decodeCAL()  //TODO
@@ -272,7 +291,10 @@ class QRCode(var string: String)
 
     private fun decodeWIFI()
     {
-        val regex = Regex(pattern = "(?:(?::)|;)(?:[tspheai]|(?:ph2)):(.*?)(?=;)")
+        val regex = Regex(
+            pattern = "(?:(?::)|;)(?:[tspheai]|(?:ph2)):(.*?)(?=;)",
+            option = RegexOption.IGNORE_CASE
+        )
         if (regex.containsMatchIn(this.string))
         {
             for (matchResult: MatchResult in regex.findAll(this.string))
