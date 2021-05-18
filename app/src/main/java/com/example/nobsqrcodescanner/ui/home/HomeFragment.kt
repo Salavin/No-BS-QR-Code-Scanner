@@ -20,8 +20,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.example.nobsqrcodescanner.MainActivity
 import com.example.nobsqrcodescanner.R
-import com.example.nobsqrcodescanner.qr.ProcessQRCode
-import com.example.nobsqrcodescanner.qr.QRCodeType
+import com.example.processqrcode.QRCode
+import com.example.processqrcode.QRCodeType
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
@@ -117,7 +117,7 @@ class HomeFragment : Fragment()
 //                            context?.toast("The code %s".format(barcodeValue))
                                 if (barcodeValue != null)
                                 {
-                                    val processQRCode = ProcessQRCode(barcodeValue)
+                                    val processQRCode = QRCode(barcodeValue)
                                     var title: String
                                     var message: String
 
