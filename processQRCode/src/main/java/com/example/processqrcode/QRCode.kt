@@ -31,7 +31,7 @@ class QRCode(var string: String)
                     this.type = QRCodeType.URL
                     decodeURL()
                 }
-                "mailto" ->
+                "mailto", "matmsg" ->
                 {
                     this.type = QRCodeType.EMAIL
                     decodeEMAIL()
@@ -104,24 +104,49 @@ class QRCode(var string: String)
                 this.data[parameter.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)] =
                     uri.getQueryParameter(parameter)!!
             }
+            this.intent = Intent(Intent.ACTION_VIEW)
+            this.intent!!.data = Uri.parse(this.string)
         }
         else
         {
+            this.intent = Intent(Intent.ACTION_SENDTO).apply {
+                type = "message/rfc822"
+                data = Uri.parse("mailto:")
+            }
+            this.string = this.string.replace("\n", "%0D%0A")
             val regex = Regex(
-                pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|\\Z)",
+                pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|(?:;;\\Z)|\\Z)",
                 option = RegexOption.IGNORE_CASE)
+            var addresses = ""
+            var subject = ""
+            var body = ""
             for (match in regex.findAll(this.string))
             {
-                when (match.groupValues[0].toLowerCase(Locale.ROOT))
+                val matchResult = match.groupValues[1]
+                when
                 {
-                    "to:" -> this.data["Email"] = match.groupValues[1]
-                    "sub:" -> this.data["Subject"] = match.groupValues[1]
-                    "body:" -> this.data["Body"] = match.groupValues[1]
+                    match.groupValues[0].substring(0, 2).toLowerCase(Locale.ROOT) == "to" ->
+                    {
+                        this.data["Email"] = matchResult
+                        this.intent?.putExtra(Intent.EXTRA_EMAIL, matchResult)
+                        addresses = matchResult
+                    }
+                    match.groupValues[0].substring(0, 3).toLowerCase(Locale.ROOT) == "sub" ->
+                    {
+                        this.data["Subject"] = matchResult
+                        this.intent?.putExtra(Intent.EXTRA_SUBJECT, matchResult)
+                        subject = matchResult
+                    }
+                    match.groupValues[0].substring(0, 4).toLowerCase(Locale.ROOT) == "body" ->
+                    {
+                        this.data["Body"] = matchResult.replace("%0D%0A", "\n")
+                        this.intent?.putExtra(Intent.EXTRA_TEXT, matchResult)
+                        body = matchResult
+                    }
                 }
             }
+            this.intent?.data = Uri.parse(String.format("mailto:%s?subject=%s?&body=%s", addresses, subject, body))
         }
-        this.intent = Intent(Intent.ACTION_VIEW)
-        this.intent!!.data = Uri.parse(this.string)
     }
 
     private fun decodeTEL()
