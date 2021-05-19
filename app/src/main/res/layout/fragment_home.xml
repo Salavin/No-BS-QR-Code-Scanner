@@ -29,6 +29,17 @@
             app:fabSize="normal" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab_upload"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_margin="32dp"
+            android:src="@drawable/ic_baseline_photo_library_24"
+            android:layout_centerHorizontal="true"
+            app:backgroundTint="@color/secondaryDarkColor"
+            app:fabSize="normal" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_switch_camera"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

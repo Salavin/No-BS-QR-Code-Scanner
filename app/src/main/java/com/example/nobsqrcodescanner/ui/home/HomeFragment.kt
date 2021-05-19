@@ -1,14 +1,18 @@
 package com.example.nobsqrcodescanner.ui.home
 
 import android.Manifest
+import android.app.Activity.RESULT_OK
 import android.app.AlertDialog
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -73,6 +77,9 @@ class HomeFragment : Fragment()
         root.findViewById<FloatingActionButton>(R.id.fab_flash).setOnClickListener {
             changeFlashState()
         }
+        root.findViewById<FloatingActionButton>(R.id.fab_upload).setOnClickListener {
+            uploadImage()
+        }
         createFotoapparat()
 
         cameraStatus = CameraState.BACK
@@ -107,72 +114,7 @@ class HomeFragment : Fragment()
                         frame.rotation,
                         InputImage.IMAGE_FORMAT_NV21
                     )
-                    val task = barcodeScanner.process(inputImage)
-                    task.addOnSuccessListener { barCodesList ->
-                        if (this.alertDialog == null || !this.alertDialog?.isShowing!!)
-                        {
-                            for (barcodeObject in barCodesList)
-                            {
-                                val barcodeValue = barcodeObject.rawValue
-//                            context?.toast("The code %s".format(barcodeValue))
-                                if (barcodeValue != null)
-                                {
-                                    val processQRCode = QRCode(barcodeValue)
-                                    var title: String
-                                    var message: String
-
-                                    title = when (processQRCode.type)
-                                    {
-                                        QRCodeType.TEXT -> "Decoded text:"
-                                        QRCodeType.URL -> "Open URL?"
-                                        QRCodeType.EMAIL -> "Open email application?"
-                                        QRCodeType.TEL -> "Open phone app?"
-                                        QRCodeType.CONTACT -> "Add contact?"
-                                        QRCodeType.SMS -> "Send text message?"
-                                        QRCodeType.GEO -> "Open maps application?"
-                                        QRCodeType.WIFI -> "Connect to WiFi network?"
-                                        QRCodeType.MARKET -> "Open app store?"
-                                        else -> "Error"
-                                    }
-                                    if (processQRCode.type == QRCodeType.TEXT)
-                                    {
-                                        message = processQRCode.string
-                                    } else
-                                    {
-                                        message = ""
-                                        for (key in processQRCode.data.keys)
-                                        {
-                                            message += key + ": " + processQRCode.data[key] + '\n'
-                                        }
-                                    }
-                                    this.alertDialog = activity?.let {
-                                        val builder = AlertDialog.Builder(it)
-                                        builder.apply {
-                                            setTitle(title)
-                                            setMessage(message)
-                                        }
-                                        if (processQRCode.type == QRCodeType.TEXT)
-                                        {
-                                            builder.setNeutralButton("Dismiss") { _, _ -> }
-                                        } else
-                                        {
-                                            builder.setNegativeButton("No") { _, _ -> }
-                                            builder.setPositiveButton("Yes") { _, _ ->
-                                                if (processQRCode.type == QRCodeType.WIFI)
-                                                {
-                                                    startActivityForResult(processQRCode.intent, 0)
-                                                } else
-                                                {
-                                                    startActivity(processQRCode.intent)
-                                                }
-                                            }
-                                        }
-                                        builder.show()
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    handleScanning(inputImage)
                 }
             )
             fotoapparat = activity?.let {
@@ -216,6 +158,24 @@ class HomeFragment : Fragment()
         else cameraStatus = CameraState.BACK
     }
 
+    private fun uploadImage()
+    {
+        val gallery = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+        startActivityForResult(gallery, 100)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
+    {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (resultCode == RESULT_OK && requestCode == 100)
+        {
+            val imageUri = data?.data
+            val inputImage = InputImage.fromFilePath(context, imageUri)
+            handleScanning(inputImage)
+        }
+    }
+
     override fun onStart()
     {
         super.onStart()
@@ -242,7 +202,7 @@ class HomeFragment : Fragment()
         ) != PackageManager.PERMISSION_GRANTED
     }
 
-    fun requestPermission()
+    private fun requestPermission()
     {
         activity?.let { ActivityCompat.requestPermissions(it, permissions, 0) }
     }
@@ -262,6 +222,75 @@ class HomeFragment : Fragment()
             val intent = Intent(activity?.applicationContext, MainActivity::class.java)
             startActivity(intent)
             activity?.finish()
+        }
+    }
+
+    private fun handleScanning(inputImage: InputImage)
+    {
+        val task = barcodeScanner.process(inputImage)
+        task.addOnSuccessListener { barCodesList ->
+            if (this.alertDialog == null || !this.alertDialog?.isShowing!!)
+            {
+                for (barcodeObject in barCodesList)
+                {
+                    val barcodeValue = barcodeObject.rawValue
+//                            context?.toast("The code %s".format(barcodeValue))
+                    if (barcodeValue != null)
+                    {
+                        val processQRCode = QRCode(barcodeValue)
+                        var message: String
+
+                        val title: String = when (processQRCode.type)
+                        {
+                            QRCodeType.TEXT -> "Decoded text:"
+                            QRCodeType.URL -> "Open URL?"
+                            QRCodeType.EMAIL -> "Open email application?"
+                            QRCodeType.TEL -> "Open phone app?"
+                            QRCodeType.CONTACT -> "Add contact?"
+                            QRCodeType.SMS -> "Send text message?"
+                            QRCodeType.GEO -> "Open maps application?"
+                            QRCodeType.WIFI -> "Connect to WiFi network?"
+                            QRCodeType.MARKET -> "Open app store?"
+                            else -> "Error"
+                        }
+                        if (processQRCode.type == QRCodeType.TEXT)
+                        {
+                            message = processQRCode.string
+                        } else
+                        {
+                            message = ""
+                            for (key in processQRCode.data.keys)
+                            {
+                                message += key + ": " + processQRCode.data[key] + '\n'
+                            }
+                        }
+                        this.alertDialog = activity?.let {
+                            val builder = AlertDialog.Builder(it)
+                            builder.apply {
+                                setTitle(title)
+                                setMessage(message)
+                            }
+                            if (processQRCode.type == QRCodeType.TEXT)
+                            {
+                                builder.setNeutralButton("Dismiss") { _, _ -> }
+                            } else
+                            {
+                                builder.setNegativeButton("No") { _, _ -> }
+                                builder.setPositiveButton("Yes") { _, _ ->
+                                    if (processQRCode.type == QRCodeType.WIFI)
+                                    {
+                                        startActivityForResult(processQRCode.intent, 0)
+                                    } else
+                                    {
+                                        startActivity(processQRCode.intent)
+                                    }
+                                }
+                            }
+                            builder.show()
+                        }
+                    }
+                }
+            }
         }
     }
 
