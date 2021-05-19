@@ -109,8 +109,7 @@ class QRCode(var string: String)
         {
             val regex = Regex(
                 pattern = "(?:(?:TO:)|(?:SUB:)|(?:BODY:))(.*?)(?=(?:;TO:)|(?:;SUB:)|(?:;BODY:)|(?:;\\Z)|\\Z)",
-                option = RegexOption.IGNORE_CASE
-            )
+                option = RegexOption.IGNORE_CASE)
             for (match in regex.findAll(this.string))
             {
                 when (match.groupValues[0].toLowerCase(Locale.ROOT))
@@ -127,7 +126,9 @@ class QRCode(var string: String)
 
     private fun decodeTEL()
     {
-        var regex = Regex(pattern = "\\A.{4}([^:[a-zA-Z]]+)(?::|\\Z)")
+        var regex = Regex(
+            pattern = "\\A(?:(?:tel:)|(?:sms:)|(?:smsto:)|(?:mms:)|(?:mmsto:))([^:a-zA-Z]*):?(.*)\\Z",
+            option = RegexOption.IGNORE_CASE)
         if (regex.containsMatchIn(this.string))
         {
             this.data["Number"] = regex.find(this.string)!!.groupValues[1]
@@ -143,13 +144,12 @@ class QRCode(var string: String)
         {
             this.intent = Intent(Intent.ACTION_SENDTO)
             this.intent!!.data = Uri.parse("smsto:" + this.data["Number"])
-
-            regex = Regex(pattern = "\\A.{3}:\\S+:(\\S+)\\Z")
-            val result: String? = regex.find(this.string)?.groupValues?.get(1)
-            if (result != null)
+            val messageBody = regex.find(this.string)!!.groupValues[2]
+            if (messageBody != "")
             {
-                this.data["Message"] = URLDecoder.decode(result, "UTF-8")
-                this.intent!!.putExtra("sms_body", URLDecoder.decode(result, "UTF-8"))
+                val decodedMessageBody = URLDecoder.decode(messageBody, "UTF-8")
+                this.data["Message"] = decodedMessageBody
+                this.intent!!.putExtra("sms_body", decodedMessageBody)
             }
         }
         else
@@ -223,10 +223,7 @@ class QRCode(var string: String)
         }
         if (this.data["Name"]?.contains(',') == true)  // "When a field is divided by a comma (,), the first half is treated as the last name and the second half is treated as the first name."
         {
-            this.data["Name"] =
-                this.data["Name"]?.substringAfter(',')!! + ' ' + this.data["Name"]?.substringBefore(
-                    ','
-                )!!
+            this.data["Name"] = this.data["Name"]?.substringAfter(',')!! + ' ' + this.data["Name"]?.substringBefore(',')!!
         }
         this.intent = Intent(Intent.ACTION_INSERT)
         this.intent!!.type = ContactsContract.Contacts.CONTENT_TYPE
@@ -268,7 +265,9 @@ class QRCode(var string: String)
 
     private fun decodeGEO()
     {
-        val regex = Regex(pattern = "geo:(.*?),(.*?)(?:,|\\Z)", option = RegexOption.IGNORE_CASE)
+        val regex = Regex(
+            pattern = "geo:(.*?),(.*?)(?:,|\\Z)",
+            option = RegexOption.IGNORE_CASE)
         if (regex.containsMatchIn(this.string) && (regex.find(this.string)!!.groupValues.size == 3))
         {
             val groupValues = regex.find(this.string)!!.groupValues
@@ -293,8 +292,7 @@ class QRCode(var string: String)
     {
         val regex = Regex(
             pattern = "(?:(?::)|;)(?:[tspheai]|(?:ph2)):(.*?)(?=;)",
-            option = RegexOption.IGNORE_CASE
-        )
+            option = RegexOption.IGNORE_CASE)
         if (regex.containsMatchIn(this.string))
         {
             for (matchResult: MatchResult in regex.findAll(this.string))
@@ -424,10 +422,7 @@ class QRCode(var string: String)
         val suggestionsList: MutableList<WifiNetworkSuggestion> = ArrayList()
         suggestionsList.add(wifiNetworkSuggestion.build())
         val bundle = Bundle()
-        bundle.putParcelableArrayList(
-            Settings.EXTRA_WIFI_NETWORK_LIST,
-            suggestionsList as java.util.ArrayList<out Parcelable>
-        )
+        bundle.putParcelableArrayList(Settings.EXTRA_WIFI_NETWORK_LIST, suggestionsList as java.util.ArrayList<out Parcelable>)
         this.intent!!.putExtras(bundle)
     }
 
