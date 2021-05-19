@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity()
     override fun onCreateOptionsMenu(menu: Menu): Boolean
     {
         // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.main, menu)
+//        menuInflater.inflate(R.menu.main, menu)
         return true
     }
 
@@ -52,4 +52,19 @@ class MainActivity : AppCompatActivity()
         val navController = findNavController(R.id.nav_host_fragment)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
+}
+
+object Constants
+{
+    const val PICK_IMAGE = 100
+    const val REQUEST_PERMS = 250
+    const val WIFI_CODE = 555
+    const val ABOUT_INTENT = 10
+    const val COPY_HASHTAG = "copy_hashtag"
+    const val FROM_SHORTCUT = "from_shortcut"
+    const val TITLE = "Color Finder"
+    const val ABOUT_TITLE = "About Color Finder"
+    const val PERSONAL_WEBSITE = "https://samlav.in"
+    const val REPOSITORY = "https://github.com/Salavin/No-BS-QR-Code-Scanner"
+    const val GOOGLE_PAY = "https://gpay.app.goo.gl/pay-9su9NF43f9N"
 }

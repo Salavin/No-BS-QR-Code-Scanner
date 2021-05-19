@@ -1,4 +1,4 @@
-package com.example.nobsqrcodescanner.ui.gallery
+package com.example.nobsqrcodescanner.ui.settings
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,10 +10,10 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.example.nobsqrcodescanner.R
 
-class GalleryFragment : Fragment()
+class SettingsFragment : Fragment()
 {
 
-    private lateinit var galleryViewModel: GalleryViewModel
+    private lateinit var settingsViewModel: SettingsViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -21,11 +21,11 @@ class GalleryFragment : Fragment()
         savedInstanceState: Bundle?
     ): View?
     {
-        galleryViewModel =
-            ViewModelProviders.of(this).get(GalleryViewModel::class.java)
-        val root = inflater.inflate(R.layout.fragment_gallery, container, false)
+        settingsViewModel =
+            ViewModelProviders.of(this).get(SettingsViewModel::class.java)
+        val root = inflater.inflate(R.layout.fragment_settings, container, false)
         val textView: TextView = root.findViewById(R.id.text_gallery)
-        galleryViewModel.text.observe(viewLifecycleOwner, Observer {
+        settingsViewModel.text.observe(viewLifecycleOwner, Observer {
             textView.text = it
         })
         return root

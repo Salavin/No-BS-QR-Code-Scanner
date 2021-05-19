@@ -22,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import com.example.nobsqrcodescanner.Constants
 import com.example.nobsqrcodescanner.MainActivity
 import com.example.nobsqrcodescanner.R
 import com.example.processqrcode.QRCode
@@ -161,14 +162,14 @@ class HomeFragment : Fragment()
     private fun uploadImage()
     {
         val gallery = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
-        startActivityForResult(gallery, 100)
+        startActivityForResult(gallery, Constants.PICK_IMAGE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
     {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (resultCode == RESULT_OK && requestCode == 100)
+        if (resultCode == RESULT_OK && requestCode == Constants.PICK_IMAGE)
         {
             val imageUri = data?.data
             val inputImage = InputImage.fromFilePath(context, imageUri)
@@ -204,7 +205,7 @@ class HomeFragment : Fragment()
 
     private fun requestPermission()
     {
-        activity?.let { ActivityCompat.requestPermissions(it, permissions, 0) }
+        activity?.let { ActivityCompat.requestPermissions(it, permissions, Constants.REQUEST_PERMS) }
     }
 
     override fun onStop()
@@ -279,7 +280,7 @@ class HomeFragment : Fragment()
                                 builder.setPositiveButton("Yes") { _, _ ->
                                     if (processQRCode.type == QRCodeType.WIFI)
                                     {
-                                        startActivityForResult(processQRCode.intent, 0)
+                                        startActivityForResult(processQRCode.intent, Constants.WIFI_CODE)
                                     } else
                                     {
                                         startActivity(processQRCode.intent)
