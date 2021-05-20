@@ -35,24 +35,21 @@ class AboutFragment : Fragment()
         val repositoryButton = root.findViewById<Button>(R.id.repositoryButton)
         val googlePayButton = root.findViewById<Button>(R.id.googlePayButton)
 
-        aboutViewModel.text.observe(viewLifecycleOwner, Observer {
-            imageView.setOnClickListener {
-                Toast.makeText(context, "\uD83D\uDC23", Toast.LENGTH_SHORT).show()
-            }
+        imageView.setOnClickListener {
+            Toast.makeText(context, "\uD83D\uDC23", Toast.LENGTH_SHORT).show()
+        }
 
-            websiteButton.setOnClickListener {
-                goToUrl(Constants.PERSONAL_WEBSITE)
-            }
+        websiteButton.setOnClickListener {
+            goToUrl(Constants.PERSONAL_WEBSITE)
+        }
 
-            repositoryButton.setOnClickListener {
-                goToUrl(Constants.REPOSITORY)
-            }
+        repositoryButton.setOnClickListener {
+            goToUrl(Constants.REPOSITORY)
+        }
 
-            googlePayButton.setOnClickListener {
-                goToUrl(Constants.GOOGLE_PAY)
-            }
-
-        })
+        googlePayButton.setOnClickListener {
+            goToUrl(Constants.GOOGLE_PAY)
+        }
         return root
     }
 

@@ -235,10 +235,15 @@ class HomeFragment : Fragment()
                 for (barcodeObject in barCodesList)
                 {
                     val barcodeValue = barcodeObject.rawValue
-//                            context?.toast("The code %s".format(barcodeValue))
                     if (barcodeValue != null)
                     {
                         val processQRCode = QRCode(barcodeValue)
+                        val sharedPreferences = activity?.getSharedPreferences(Constants.SHARED_PREF, Context.MODE_PRIVATE)
+                        if ((sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
+                        {
+                            executeIntent(processQRCode)
+                            return@addOnSuccessListener
+                        }
                         var message: String
 
                         val title: String = when (processQRCode.type)
@@ -278,13 +283,7 @@ class HomeFragment : Fragment()
                             {
                                 builder.setNegativeButton("No") { _, _ -> }
                                 builder.setPositiveButton("Yes") { _, _ ->
-                                    if (processQRCode.type == QRCodeType.WIFI)
-                                    {
-                                        startActivityForResult(processQRCode.intent, Constants.WIFI_CODE)
-                                    } else
-                                    {
-                                        startActivity(processQRCode.intent)
-                                    }
+                                    executeIntent(processQRCode)
                                 }
                             }
                             builder.show()
@@ -292,6 +291,17 @@ class HomeFragment : Fragment()
                     }
                 }
             }
+        }
+    }
+
+    private fun executeIntent(processQRCode: QRCode)
+    {
+        if (processQRCode.type == QRCodeType.WIFI)
+        {
+            startActivityForResult(processQRCode.intent, Constants.WIFI_CODE)
+        } else
+        {
+            startActivity(processQRCode.intent)
         }
     }
 

@@ -60,7 +60,8 @@ object Constants
     const val REQUEST_PERMS = 250
     const val WIFI_CODE = 555
     const val ABOUT_INTENT = 10
-    const val COPY_HASHTAG = "copy_hashtag"
+    const val EXECUTE_INTENTS = "execute_intents"
+    const val SHARED_PREF = "pref"
     const val FROM_SHORTCUT = "from_shortcut"
     const val TITLE = "Color Finder"
     const val ABOUT_TITLE = "About Color Finder"
