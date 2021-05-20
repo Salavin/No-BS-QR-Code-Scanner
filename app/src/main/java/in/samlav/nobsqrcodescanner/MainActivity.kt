@@ -77,12 +77,8 @@ object Constants
     const val PICK_IMAGE = 100
     const val REQUEST_PERMS = 250
     const val WIFI_CODE = 555
-    const val ABOUT_INTENT = 10
     const val EXECUTE_INTENTS = "execute_intents"
     const val SHARED_PREF = "pref"
-    const val FROM_SHORTCUT = "from_shortcut"
-    const val TITLE = "Color Finder"
-    const val ABOUT_TITLE = "About Color Finder"
     const val PERSONAL_WEBSITE = "https://samlav.in"
     const val REPOSITORY = "https://github.com/Salavin/No-BS-QR-Code-Scanner"
     const val GOOGLE_PAY = "https://gpay.app.goo.gl/pay-9su9NF43f9N"
