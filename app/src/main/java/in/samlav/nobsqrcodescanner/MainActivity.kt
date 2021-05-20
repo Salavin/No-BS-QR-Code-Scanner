@@ -1,17 +1,19 @@
 package `in`.samlav.nobsqrcodescanner
 
+import android.app.AlertDialog
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
-import com.google.android.material.navigation.NavigationView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import com.example.nobsqrcodescanner.R
+import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity()
 {
@@ -50,6 +52,23 @@ class MainActivity : AppCompatActivity()
     {
         val navController = findNavController(R.id.nav_host_fragment)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray)
+    {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if ((requestCode == Constants.REQUEST_PERMS) && (grantResults[0] == PackageManager.PERMISSION_DENIED))
+        {
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Permission Required")
+                .setMessage("In order to scan QR codes, the app needs permission to access the camera. Please go to settings and grant access to the camera.")
+                .setNeutralButton("OK", null)
+                .show()
+        }
     }
 }
 

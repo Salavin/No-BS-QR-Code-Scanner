@@ -49,7 +49,7 @@ class HomeFragment : Fragment()
     var cameraStatus: CameraState? = null
     var flashState: FlashState? = null
     var cameraView: CameraRenderer? = null
-    val permissions = arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+    val permissions = arrayOf(Manifest.permission.CAMERA)
     var alertDialog: AlertDialog? = null
     private lateinit var barcodeScanner: BarcodeScanner
 
@@ -185,12 +185,7 @@ class HomeFragment : Fragment()
 
     private fun hasNoPermissions(): Boolean
     {
-        return activity?.let {
-            ContextCompat.checkSelfPermission(
-                it.applicationContext,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            )
-        } != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+        return ContextCompat.checkSelfPermission(
             requireActivity().applicationContext,
             Manifest.permission.CAMERA
         ) != PackageManager.PERMISSION_GRANTED
