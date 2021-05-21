@@ -19,9 +19,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import `in`.samlav.nobsqrcodescanner.Constants
 import `in`.samlav.nobsqrcodescanner.MainActivity
+import `in`.samlav.processqrcode.APPEND_ERROR
 import com.example.nobsqrcodescanner.R
 import `in`.samlav.processqrcode.QRCode
+import `in`.samlav.processqrcode.QRCodeOptions
 import `in`.samlav.processqrcode.QRCodeType
+import android.content.ClipData
+import android.content.ClipboardManager
+import androidx.core.content.ContextCompat.getSystemService
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.mlkit.vision.barcode.Barcode.FORMAT_QR_CODE
 import com.google.mlkit.vision.barcode.BarcodeScanner
@@ -225,9 +230,18 @@ class HomeFragment : Fragment()
                     val barcodeValue = barcodeObject.rawValue
                     if (barcodeValue != null)
                     {
-                        val processQRCode = QRCode(barcodeValue)
                         val sharedPreferences = activity?.getSharedPreferences(Constants.SHARED_PREF, Context.MODE_PRIVATE)
-                        if ((sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
+                        val processQRCodeOptions = QRCodeOptions()
+                        if (sharedPreferences != null)
+                        {
+                            processQRCodeOptions.setOption(APPEND_ERROR, sharedPreferences.getBoolean(Constants.APPEND_ERROR, true))
+                        }
+                        else
+                        {
+                            processQRCodeOptions.setOption(APPEND_ERROR, true)
+                        }
+                        val processQRCode = QRCode(barcodeValue, processQRCodeOptions)
+                        if ((processQRCode.type != QRCodeType.TEXT) && (sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
                         {
                             executeIntent(processQRCode)
                             return@addOnSuccessListener
@@ -267,6 +281,12 @@ class HomeFragment : Fragment()
                             if (processQRCode.type == QRCodeType.TEXT)
                             {
                                 builder.setNeutralButton("Dismiss") { _, _ -> }
+                                builder.setPositiveButton("Copy Text") {_, _ ->
+                                    val clipboard = requireActivity().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip: ClipData = ClipData.newPlainText("Copied text from QR code", message)
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(requireActivity().applicationContext, "Copied QR code text to clipboard.", Toast.LENGTH_SHORT).show()
+                                }
                             } else
                             {
                                 builder.setNegativeButton("No") { _, _ -> }
