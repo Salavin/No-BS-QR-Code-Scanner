@@ -12,7 +12,7 @@ import java.net.URLDecoder
 import java.util.*
 import kotlin.collections.ArrayList
 
-class QRCode(var string: String)
+class QRCode(var string: String, var options: QRCodeOptions)
 {
     var type: QRCodeType
     var data: MutableMap<String, String> = mutableMapOf()
@@ -24,7 +24,7 @@ class QRCode(var string: String)
         if (regex.containsMatchIn(this.string))
         {
             when (regex.find(this.string)?.groupValues?.get(1)
-                ?.toLowerCase(Locale.ROOT)) //TODO: Implement vEvent and vCard
+                ?.lowercase(Locale.ROOT)) //TODO: Implement vEvent and vCard
             {
                 "http", "https", "url", "urlto" ->
                 {
@@ -83,9 +83,9 @@ class QRCode(var string: String)
     {
         when
         {
-            this.string.substring(0, 4).toLowerCase(Locale.ROOT) == "url:" -> this.data["URL"] =
+            this.string.substring(0, 4).lowercase(Locale.ROOT) == "url:" -> this.data["URL"] =
                 this.string.substring(4)
-            this.string.substring(0, 6).toLowerCase(Locale.ROOT) == "urlto:" -> this.data["URL"] =
+            this.string.substring(0, 6).lowercase(Locale.ROOT) == "urlto:" -> this.data["URL"] =
                 this.string.substring(6)
             else -> this.data["URL"] = this.string  // http, https, market
         }
@@ -95,13 +95,14 @@ class QRCode(var string: String)
 
     private fun decodeEMAIL()
     {
-        if (this.string.substring(0, 7).toLowerCase(Locale.ROOT) == "mailto:")
+        if (this.string.substring(0, 7).lowercase(Locale.ROOT) == "mailto:")
         {
             val uri: Uri = Uri.parse(this.string)
             this.data["Email"] = uri.userInfo + '@' + uri.authority
             for (parameter in uri.queryParameterNames)
             {
-                this.data[parameter.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)] =
+                @Suppress("DEPRECATION")
+                this.data[parameter.lowercase(Locale.ROOT).capitalize(Locale.ROOT)] =
                     uri.getQueryParameter(parameter)!!
             }
             this.intent = Intent(Intent.ACTION_VIEW)
@@ -125,19 +126,19 @@ class QRCode(var string: String)
                 val matchResult = match.groupValues[1]
                 when
                 {
-                    match.groupValues[0].substring(0, 2).toLowerCase(Locale.ROOT) == "to" ->
+                    match.groupValues[0].substring(0, 2).lowercase(Locale.ROOT) == "to" ->
                     {
                         this.data["Email"] = matchResult
                         this.intent?.putExtra(Intent.EXTRA_EMAIL, matchResult)
                         addresses = matchResult
                     }
-                    match.groupValues[0].substring(0, 3).toLowerCase(Locale.ROOT) == "sub" ->
+                    match.groupValues[0].substring(0, 3).lowercase(Locale.ROOT) == "sub" ->
                     {
                         this.data["Subject"] = matchResult
                         this.intent?.putExtra(Intent.EXTRA_SUBJECT, matchResult)
                         subject = matchResult
                     }
-                    match.groupValues[0].substring(0, 4).toLowerCase(Locale.ROOT) == "body" ->
+                    match.groupValues[0].substring(0, 4).lowercase(Locale.ROOT) == "body" ->
                     {
                         this.data["Body"] = matchResult.replace("%0D%0A", "\n")
                         this.intent?.putExtra(Intent.EXTRA_TEXT, matchResult)
@@ -152,16 +153,19 @@ class QRCode(var string: String)
     private fun decodeTEL()
     {
         var regex = Regex(
-            pattern = "\\A(?:(?:tel:)|(?:sms:)|(?:smsto:)|(?:mms:)|(?:mmsto:))([^:a-zA-Z]*):?(.*)\\Z",
+            pattern = "\\A(?:(?:tel:)|(?:sms:)|(?:smsto:)|(?:mms:)|(?:mmsto:))([^:]*):?(.*)\\Z",
             option = RegexOption.IGNORE_CASE)
-        if (regex.containsMatchIn(this.string))
+        if (regex.containsMatchIn(this.string) && !containsLetters(regex.find(this.string)!!.groupValues[1]))
         {
             this.data["Number"] = regex.find(this.string)!!.groupValues[1]
         }
         else
         {
             this.type = QRCodeType.TEXT
-            this.string += " [Note: Invalid phone number]"
+            if (options.getOption(APPEND_ERROR) == true)
+            {
+                this.string += " [Note: Invalid phone number]"
+            }
             decodeTEXT()
             return
         }
@@ -221,7 +225,7 @@ class QRCode(var string: String)
                 }
                 else
                 {
-                    when (tmpParam.toLowerCase(Locale.ROOT))
+                    when (tmpParam.lowercase(Locale.ROOT))
                     {
                         "n" -> this.data["Name"] = ""
                         "sound" -> this.data["Reading"] = ""
@@ -236,7 +240,10 @@ class QRCode(var string: String)
                         else ->  // Invalid formatting, abort
                         {
                             this.type = QRCodeType.TEXT
-                            this.string += " [Note: Invalid formatting]"
+                            if (options.getOption(APPEND_ERROR) == true)
+                            {
+                                this.string += " [Note: Invalid formatting]"
+                            }
                             decodeTEXT()
                             return
                         }
@@ -322,13 +329,13 @@ class QRCode(var string: String)
         {
             for (matchResult: MatchResult in regex.findAll(this.string))
             {
-                when (matchResult.groupValues[0][1].toLowerCase())  // Grabbing first group, second character
+                when (matchResult.groupValues[0][1].lowercaseChar())  // Grabbing first group, second character
                 {
                     't' -> this.data["Authentication type"] = matchResult.groupValues[1]
                     's' -> this.data["SSID"] = matchResult.groupValues[1]
                     'p' ->
                     {
-                        if (matchResult.groupValues[0].toLowerCase(Locale.ROOT).contains("ph2"))
+                        if (matchResult.groupValues[0].lowercase(Locale.ROOT).contains("ph2"))
                         {
                             this.data["Phase 2 method"] = matchResult.groupValues[1]
                         } else
@@ -346,7 +353,10 @@ class QRCode(var string: String)
         if (!this.data.keys.contains("SSID"))  // This parameter is required
         {
             this.type = QRCodeType.TEXT
-            this.string += " [Note: Missing SSID]"
+            if (options.getOption(APPEND_ERROR) == true)
+            {
+                this.string += " [Note: Missing SSID]"
+            }
             decodeTEXT()
             return  // Aborting WIFI decoding
         }
@@ -359,12 +369,15 @@ class QRCode(var string: String)
                 "SSID" -> this.data[key]?.let { wifiNetworkSuggestion.setSsid(it) }
                 "Password" ->
                 {
-                    when (this.data["Authentication type"]?.toLowerCase(Locale.ROOT))
+                    when (this.data["Authentication type"]?.lowercase(Locale.ROOT))
                     {
                         "wep" ->
                         {
                             this.type = QRCodeType.TEXT
-                            this.string += " [Note: WEP networks are not supported]"
+                            if (options.getOption(APPEND_ERROR) == true)
+                            {
+                                this.string += " [Note: WEP networks are not supported]"
+                            }
                             decodeTEXT()
                             return  // Aborting WIFI decoding
                         }
@@ -376,7 +389,7 @@ class QRCode(var string: String)
                         "wpa2-eap", "wpa3-eap" ->
                         {
                             val wifiEnterpriseConfig = WifiEnterpriseConfig()
-                            when (this.data["EAP method"]!!.toLowerCase(Locale.ROOT))
+                            when (this.data["EAP method"]!!.lowercase(Locale.ROOT))
                             {
                                 "aka" -> wifiEnterpriseConfig.eapMethod =
                                     WifiEnterpriseConfig.Eap.AKA
@@ -399,7 +412,7 @@ class QRCode(var string: String)
                                 "wapi_cert" -> wifiEnterpriseConfig.eapMethod =
                                     WifiEnterpriseConfig.Eap.WAPI_CERT
                             }
-                            when (this.data["Phase 2 method"]!!.toLowerCase(Locale.ROOT))
+                            when (this.data["Phase 2 method"]!!.lowercase(Locale.ROOT))
                             {
                                 "aka" -> wifiEnterpriseConfig.phase2Method =
                                     WifiEnterpriseConfig.Phase2.AKA
@@ -422,7 +435,7 @@ class QRCode(var string: String)
                             wifiEnterpriseConfig.anonymousIdentity =
                                 this.data["Anonymous identity"]!!
                             wifiEnterpriseConfig.password = this.data["Password"]!!
-                            if (this.data["Authentication type"]?.toLowerCase(Locale.ROOT) == "wpa2-eap")
+                            if (this.data["Authentication type"]?.lowercase(Locale.ROOT) == "wpa2-eap")
                             {
                                 wifiNetworkSuggestion.setWpa2EnterpriseConfig(wifiEnterpriseConfig)
                             } else
@@ -438,7 +451,7 @@ class QRCode(var string: String)
                     }
                 }
                 "Hidden" -> wifiNetworkSuggestion.setIsHiddenSsid(
-                    this.data["Hidden"]?.toLowerCase(
+                    this.data["Hidden"]?.lowercase(
                         Locale.ROOT
                     ).toBoolean()
                 )
@@ -454,5 +467,16 @@ class QRCode(var string: String)
     private fun decodeTEXT()
     {
         this.data["Text"] = this.string
+    }
+
+    private fun containsLetters(string: String): Boolean
+    {
+        for (c in string)
+        {
+            if (c in 'A'..'Z' || c in 'a'..'z') {
+                return true
+            }
+        }
+        return false
     }
 }

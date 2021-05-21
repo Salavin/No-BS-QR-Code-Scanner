@@ -78,6 +78,7 @@ object Constants
     const val REQUEST_PERMS = 250
     const val WIFI_CODE = 555
     const val EXECUTE_INTENTS = "execute_intents"
+    const val APPEND_ERROR = "append_error"
     const val SHARED_PREF = "pref"
     const val PERSONAL_WEBSITE = "https://samlav.in"
     const val REPOSITORY = "https://github.com/Salavin/No-BS-QR-Code-Scanner"

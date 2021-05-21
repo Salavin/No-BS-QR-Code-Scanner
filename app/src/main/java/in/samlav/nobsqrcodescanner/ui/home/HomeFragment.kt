@@ -19,8 +19,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import `in`.samlav.nobsqrcodescanner.Constants
 import `in`.samlav.nobsqrcodescanner.MainActivity
+import `in`.samlav.processqrcode.APPEND_ERROR
 import com.example.nobsqrcodescanner.R
 import `in`.samlav.processqrcode.QRCode
+import `in`.samlav.processqrcode.QRCodeOptions
 import `in`.samlav.processqrcode.QRCodeType
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -228,8 +230,17 @@ class HomeFragment : Fragment()
                     val barcodeValue = barcodeObject.rawValue
                     if (barcodeValue != null)
                     {
-                        val processQRCode = QRCode(barcodeValue)
                         val sharedPreferences = activity?.getSharedPreferences(Constants.SHARED_PREF, Context.MODE_PRIVATE)
+                        val processQRCodeOptions = QRCodeOptions()
+                        if (sharedPreferences != null)
+                        {
+                            processQRCodeOptions.setOption(APPEND_ERROR, sharedPreferences.getBoolean(Constants.APPEND_ERROR, true))
+                        }
+                        else
+                        {
+                            processQRCodeOptions.setOption(APPEND_ERROR, true)
+                        }
+                        val processQRCode = QRCode(barcodeValue, processQRCodeOptions)
                         if ((processQRCode.type != QRCodeType.TEXT) && (sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
                         {
                             executeIntent(processQRCode)

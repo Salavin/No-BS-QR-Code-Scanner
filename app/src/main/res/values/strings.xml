@@ -18,4 +18,5 @@
     <string name="support_me">Support me (if you want):</string>
     <string name="google_pay">Google Pay</string>
     <string name="automatically_execute_intents">Automatically execute intents</string>
+    <string name="append_error_messages_to_qr_code_strings">Append error messages to QR Code strings</string>
 </resources>
