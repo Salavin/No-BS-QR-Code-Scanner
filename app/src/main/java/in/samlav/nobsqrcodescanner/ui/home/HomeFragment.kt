@@ -26,9 +26,8 @@ import `in`.samlav.processqrcode.QRCodeOptions
 import `in`.samlav.processqrcode.QRCodeType
 import android.content.ClipData
 import android.content.ClipboardManager
-import androidx.core.content.ContextCompat.getSystemService
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.mlkit.vision.barcode.Barcode.FORMAT_QR_CODE
+import com.google.mlkit.vision.barcode.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -94,7 +93,7 @@ class HomeFragment : Fragment()
 
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
-                FORMAT_QR_CODE
+                FORMAT_ALL_FORMATS
             ).build()
 
         barcodeScanner = BarcodeScanning.getClient(options)
