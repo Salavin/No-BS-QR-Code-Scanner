@@ -55,6 +55,7 @@ class HomeFragment : Fragment()
     var cameraView: CameraRenderer? = null
     val permissions = arrayOf(Manifest.permission.CAMERA)
     var alertDialog: AlertDialog? = null
+    var hasExecuted = false
     private lateinit var barcodeScanner: BarcodeScanner
 
     private lateinit var homeViewModel: HomeViewModel
@@ -177,6 +178,7 @@ class HomeFragment : Fragment()
     override fun onStart()
     {
         super.onStart()
+        hasExecuted = false
         if (hasNoPermissions())
         {
             requestPermission()
@@ -210,6 +212,7 @@ class HomeFragment : Fragment()
     override fun onResume()
     {
         super.onResume()
+        hasExecuted = false
         if (!hasNoPermissions() && fotoapparatState == FotoapparatState.OFF)
         {
             val intent = Intent(activity?.applicationContext, MainActivity::class.java)
@@ -222,7 +225,7 @@ class HomeFragment : Fragment()
     {
         val task = barcodeScanner.process(inputImage)
         task.addOnSuccessListener { barCodesList ->
-            if (this.alertDialog == null || !this.alertDialog?.isShowing!!)
+            if ((this.alertDialog == null || !this.alertDialog?.isShowing!!) && !hasExecuted)
             {
                 for (barcodeObject in barCodesList)
                 {
@@ -242,6 +245,7 @@ class HomeFragment : Fragment()
                         val processQRCode = QRCode(barcodeValue, processQRCodeOptions)
                         if ((processQRCode.type != QRCodeType.TEXT) && (sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
                         {
+                            hasExecuted = true
                             executeIntent(processQRCode)
                             return@addOnSuccessListener
                         }
