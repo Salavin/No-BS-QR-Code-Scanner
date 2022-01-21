@@ -16,7 +16,15 @@
             android:id="@+id/camera_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_alignParentTop="true" />
+            android:layout_alignParentTop="true" >
+
+            <!--Optionally add tap to focus-->
+            <io.fotoapparat.view.FocusView
+                android:id="@+id/focusView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </io.fotoapparat.view.CameraView>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_flash"
@@ -49,6 +57,19 @@
             android:src="@drawable/ic_switch_camera"
             app:backgroundTint="@color/secondaryDarkColor"
             app:fabSize="normal" />
+
+        <TextView
+            android:id="@+id/zoomLvl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="false"
+            android:layout_marginEnd="32dp"
+            android:layout_centerVertical="true"
+            android:textColor="#FFF"
+            android:textSize="20sp"
+            tools:text="2.4" />
+
 
     </RelativeLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

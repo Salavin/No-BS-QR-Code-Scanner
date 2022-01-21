@@ -26,17 +26,20 @@ import `in`.samlav.processqrcode.QRCodeOptions
 import `in`.samlav.processqrcode.QRCodeType
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.util.Log
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.mlkit.vision.barcode.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.common.InputImage
 import io.fotoapparat.Fotoapparat
 import io.fotoapparat.configuration.CameraConfiguration
 import io.fotoapparat.log.logcat
 import io.fotoapparat.log.loggers
+import io.fotoapparat.parameter.Flash
 import io.fotoapparat.parameter.ScaleType
+import io.fotoapparat.parameter.Zoom
 import io.fotoapparat.selector.back
 import io.fotoapparat.selector.front
 import io.fotoapparat.selector.off
@@ -44,19 +47,21 @@ import io.fotoapparat.selector.torch
 import io.fotoapparat.view.CameraRenderer
 import io.fotoapparat.view.CameraView
 import kotlinx.android.synthetic.main.fragment_home.*
+import kotlin.math.roundToInt
 
 class HomeFragment : Fragment()
 {
     var fotoapparat: Fotoapparat? = null
-    val sd = Environment.getExternalStorageDirectory()
     var fotoapparatState: FotoapparatState? = null
     var cameraStatus: CameraState? = null
     var flashState: FlashState? = null
     var cameraView: CameraRenderer? = null
     val permissions = arrayOf(Manifest.permission.CAMERA)
     var alertDialog: AlertDialog? = null
+    var hasExecuted = false
+    var curZoom: Float = 0f
     private lateinit var barcodeScanner: BarcodeScanner
-
+    private lateinit var cameraZoom: Zoom.VariableZoom
     private lateinit var homeViewModel: HomeViewModel
 
     override fun onCreateView(
@@ -83,7 +88,6 @@ class HomeFragment : Fragment()
         cameraStatus = CameraState.BACK
         flashState = FlashState.OFF
         fotoapparatState = FotoapparatState.OFF
-
         return root
     }
 
@@ -119,6 +123,7 @@ class HomeFragment : Fragment()
                 Fotoapparat(
                     context = it.applicationContext,
                     view = cameraView!!,
+                    focusView = focusView,
                     scaleType = ScaleType.CenterCrop,
                     lensPosition = back(),
                     logger = loggers(
@@ -154,6 +159,7 @@ class HomeFragment : Fragment()
 
         if (cameraStatus == CameraState.BACK) cameraStatus = CameraState.FRONT
         else cameraStatus = CameraState.BACK
+        adjustViewsVisibility()
     }
 
     private fun uploadImage()
@@ -177,6 +183,7 @@ class HomeFragment : Fragment()
     override fun onStart()
     {
         super.onStart()
+        hasExecuted = false
         if (hasNoPermissions())
         {
             requestPermission()
@@ -184,6 +191,7 @@ class HomeFragment : Fragment()
         {
             fotoapparat?.start()
             fotoapparatState = FotoapparatState.ON
+            adjustViewsVisibility()
         }
     }
 
@@ -210,6 +218,7 @@ class HomeFragment : Fragment()
     override fun onResume()
     {
         super.onResume()
+        hasExecuted = false
         if (!hasNoPermissions() && fotoapparatState == FotoapparatState.OFF)
         {
             val intent = Intent(activity?.applicationContext, MainActivity::class.java)
@@ -222,7 +231,7 @@ class HomeFragment : Fragment()
     {
         val task = barcodeScanner.process(inputImage)
         task.addOnSuccessListener { barCodesList ->
-            if (this.alertDialog == null || !this.alertDialog?.isShowing!!)
+            if ((this.alertDialog == null || !this.alertDialog?.isShowing!!) && !hasExecuted)
             {
                 for (barcodeObject in barCodesList)
                 {
@@ -242,6 +251,7 @@ class HomeFragment : Fragment()
                         val processQRCode = QRCode(barcodeValue, processQRCodeOptions)
                         if ((processQRCode.type != QRCodeType.TEXT) && (sharedPreferences != null) && sharedPreferences.getBoolean(Constants.EXECUTE_INTENTS, false))
                         {
+                            hasExecuted = true
                             executeIntent(processQRCode)
                             return@addOnSuccessListener
                         }
@@ -309,6 +319,53 @@ class HomeFragment : Fragment()
         } else
         {
             startActivity(processQRCode.intent)
+        }
+    }
+
+    private fun adjustViewsVisibility() {
+        fotoapparat?.getCapabilities()
+            ?.whenAvailable { capabilities ->
+                capabilities
+                    ?.let {
+                        (it.zoom as? Zoom.VariableZoom)
+                            ?.let {
+                                cameraZoom = it
+                                focusView.scaleListener = this::scaleZoom
+                                focusView.ptrListener = this::pointerChanged
+                            }
+                            ?: run {
+                                zoomLvl?.visibility = View.GONE
+                                focusView.scaleListener = null
+                                focusView.ptrListener = null
+                            }
+
+                        fab_flash.visibility = if (it.flashModes.contains(Flash.Torch)) View.VISIBLE else View.GONE
+                    }
+            }
+
+        fab_switch_camera.visibility = if (fotoapparat?.isAvailable(front()) == true) View.VISIBLE else View.GONE
+    }
+
+    //When zooming slowly, the values are approximately 0.9 ~ 1.1
+    private fun scaleZoom(scaleFactor: Float) {
+        //convert to -0.1 ~ 0.1
+        val plusZoom = if (scaleFactor < 1) -1 * (1 - scaleFactor) else scaleFactor - 1
+        val newZoom = curZoom + plusZoom
+        if (newZoom < 0 || newZoom > 1) return
+
+        curZoom = newZoom
+        fotoapparat?.setZoom(curZoom)
+        val progress = (cameraZoom.maxZoom * curZoom).roundToInt()
+        val value = cameraZoom.zoomRatios[progress]
+        val roundedValue = ((value.toFloat()) / 10).roundToInt().toFloat() / 10
+
+        zoomLvl.visibility = View.VISIBLE
+        zoomLvl.text = String.format("%.1f×", roundedValue)
+    }
+
+    private fun pointerChanged(fingerCount: Int){
+        if(fingerCount == 0) {
+            zoomLvl?.visibility = View.GONE
         }
     }
 }
