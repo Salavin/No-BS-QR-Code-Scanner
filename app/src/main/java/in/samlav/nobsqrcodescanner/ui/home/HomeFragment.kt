@@ -27,10 +27,10 @@ import `in`.samlav.processqrcode.QRCodeType
 import android.content.ClipData
 import android.content.ClipboardManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.mlkit.vision.barcode.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.common.InputImage
 import io.fotoapparat.Fotoapparat
 import io.fotoapparat.configuration.CameraConfiguration
